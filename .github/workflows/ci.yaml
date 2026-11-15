@@ -19,7 +19,25 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci_admin
+          POSTGRES_PASSWORD: ci-throwaway
+          POSTGRES_DB: clinicflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_admin -d clinicflow"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      PGPASSWORD: ci-throwaway
+      TENANT_TEST_ADMIN_URL: postgresql://ci_admin:ci-throwaway@localhost:5432/clinicflow
+      TENANT_TEST_APP_URL: postgresql://clinicflow_app:ci-app-throwaway@localhost:5432/clinicflow
     steps:
       - uses: actions/checkout@v4
 
@@ -31,12 +49,17 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
-      - name: Run tests
-        run: python -m pytest -q
+      - name: Apply database migrations
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          psql -h localhost -U ci_admin -d clinicflow -v ON_ERROR_STOP=1 -f db/migrations/001_tenant_model.sql
+          psql -h localhost -U ci_admin -d clinicflow -v ON_ERROR_STOP=1 -c "ALTER ROLE clinicflow_app PASSWORD 'ci-app-throwaway'"
 
+      - name: Run tests
+        run: python -m pytest -q -rs
   build-scan:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -65,7 +88,7 @@ jobs:
   push:
     needs: [test, build-scan]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       id-token: write
