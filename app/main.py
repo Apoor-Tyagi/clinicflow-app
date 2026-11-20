@@ -1,4 +1,5 @@
 import os
+import random
 import time
 
 import psycopg
@@ -9,6 +10,9 @@ app = FastAPI(title="ClinicFlow API")
 
 REQUESTS = Counter("http_requests_total", "HTTP requests", ["method", "path", "status"])
 LATENCY = Histogram("http_request_duration_seconds", "Request latency", ["path"])
+
+# Fault injection for alert testing. 0 (the default) leaves behaviour unchanged.
+FAULT_RATE = float(os.getenv("FAULT_RATE", "0"))
 
 
 @app.middleware("http")
@@ -43,6 +47,8 @@ def ready(response: Response):
 
 @app.get("/api/v1/ping")
 def ping():
+    if FAULT_RATE > 0 and random.random() < FAULT_RATE:
+        return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
     return {"message": "pong"}
 
 
