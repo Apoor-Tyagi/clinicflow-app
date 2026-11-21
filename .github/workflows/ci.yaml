@@ -39,7 +39,7 @@ jobs:
       TENANT_TEST_ADMIN_URL: postgresql://ci_admin:ci-throwaway@localhost:5432/clinicflow
       TENANT_TEST_APP_URL: postgresql://clinicflow_app:ci-app-throwaway@localhost:5432/clinicflow
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -61,7 +61,7 @@ jobs:
     needs: test
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/setup-buildx-action@v3
 
@@ -93,7 +93,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
