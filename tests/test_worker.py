@@ -27,9 +27,18 @@ class FakeSes:
 
 
 class FakeDdb:
-    def __init__(self, error=None):
+    def __init__(self, error=None, existing=False, lookup_error=None):
         self.error = error
+        self.existing = existing
+        self.lookup_error = lookup_error
         self.items = []
+        self.queries = []
+
+    def query(self, **kwargs):
+        self.queries.append(kwargs)
+        if self.lookup_error:
+            raise self.lookup_error
+        return {"Count": 1 if self.existing else 0}
 
     def put_item(self, **kwargs):
         if self.error:
@@ -87,7 +96,7 @@ def test_bad_message_is_kept_for_the_dead_letter_queue_and_sends_nothing():
     assert sqs.deleted == []
 
 
-def test_duplicate_delivery_is_dropped():
+def test_concurrent_duplicate_is_caught_by_the_conditional_write():
     worker, sqs, ses, ddb = build([message()], ddb=FakeDdb(error=AlreadyRecorded()))
     worker.run_once()
     assert sqs.deleted == ["r1"]
@@ -97,3 +106,24 @@ def test_audit_record_never_holds_the_recipient_address():
     worker, sqs, ses, ddb = build([message()])
     worker.run_once()
     assert "patient@example.com" not in json.dumps(ddb.items)
+
+
+def test_redelivery_of_a_sent_reminder_sends_no_second_email():
+    worker, sqs, ses, ddb = build([message()], ddb=FakeDdb(existing=True))
+    worker.run_once()
+    assert ses.sent == []
+    assert ddb.items == []
+    assert sqs.deleted == ["r1"]
+
+
+def test_lookup_uses_a_strongly_consistent_read():
+    worker, sqs, ses, ddb = build([message()])
+    worker.run_once()
+    assert ddb.queries[0]["ConsistentRead"] is True
+
+
+def test_failed_lookup_sends_nothing_and_keeps_the_message():
+    worker, sqs, ses, ddb = build([message()], ddb=FakeDdb(lookup_error=RuntimeError("ddb down")))
+    worker.run_once()
+    assert ses.sent == []
+    assert sqs.deleted == []
