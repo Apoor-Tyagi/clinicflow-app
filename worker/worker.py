@@ -58,6 +58,25 @@ class Worker:
             log.error("bad message %s: %s", message.get("MessageId"), exc)
             return False
 
+        key = {
+            "clinic_id": {"S": data["clinic_id"]},
+            "event_time": {"S": f"reminder#{data['appointment_id']}#{data['starts_at']}"},
+        }
+        try:
+            existing = self.ddb.query(
+                TableName=self.table,
+                KeyConditionExpression="clinic_id = :c AND event_time = :t",
+                ExpressionAttributeValues={":c": key["clinic_id"], ":t": key["event_time"]},
+                ConsistentRead=True,
+                Limit=1,
+            )
+        except Exception as exc:
+            log.error("lookup failed for appointment %s: %s", data["appointment_id"], type(exc).__name__)
+            return False
+        if existing.get("Count", 0) > 0:
+            log.info("appointment %s already sent, dropping duplicate", data["appointment_id"])
+            return True
+
         try:
             self.ses.send_email(
                 FromEmailAddress=self.sender,
