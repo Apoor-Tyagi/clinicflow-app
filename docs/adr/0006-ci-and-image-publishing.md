@@ -36,3 +36,13 @@ only reviewed code on the main branch should be able to publish.
 - The arm64 half of the build runs under emulation and is slower.
 - The first push failed because the trust policy still held a placeholder instead
   of the repository IDs. Stricter variable validation now catches that at plan time.
+
+## Finding: retention counts entries, not pushes
+
+Each multi-architecture push creates three ECR entries: a tagged index and one
+untagged image per platform (about 72 MB each). A rule that keeps 20 entries keeps
+about 7 pushes. After about 7 pushes, the image pinned in the AWS overlay had
+expired, which would have left the API pods in ImagePullBackOff on the next node.
+Retention was raised to 60 entries (about 20 pushes) and the overlay was repinned
+to an image that exists. Protecting the deployed tag, or automating the tag bump,
+is the durable fix.
