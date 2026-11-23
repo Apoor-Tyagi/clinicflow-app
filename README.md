@@ -43,6 +43,12 @@ Locally nothing sends email: reminders are queued in the `reminders` table, and
 the dispatcher and worker need AWS. To reset the database, run
 `docker compose down -v`.
 
+If the API answers `invalid admin token` or rejects a key you just created, a
+variable exported in your terminal (for example `ADMIN_TOKEN`) is overriding `.env`,
+because Compose prefers the shell environment. Check with
+`docker compose config | grep ADMIN_TOKEN`, then
+`env -i HOME="$HOME" PATH="$PATH" docker compose up -d --force-recreate`.
+
 Run the tests:
 
 ```bash
