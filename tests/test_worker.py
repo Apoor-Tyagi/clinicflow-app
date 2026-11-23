@@ -127,3 +127,19 @@ def test_failed_lookup_sends_nothing_and_keeps_the_message():
     worker.run_once()
     assert ses.sent == []
     assert sqs.deleted == []
+
+
+class AccessDenied(Exception):
+    response = {"Error": {"Code": "AccessDeniedException"}}
+
+
+def test_send_failure_logs_the_aws_error_code_but_not_the_address(caplog):
+    class DeniedSes:
+        def send_email(self, **kwargs):
+            raise AccessDenied("denied for patient@example.com")
+
+    worker, sqs, ses, ddb = build([message()], ses=DeniedSes())
+    with caplog.at_level("ERROR"):
+        worker.run_once()
+    assert "AccessDeniedException" in caplog.text
+    assert "patient@example.com" not in caplog.text

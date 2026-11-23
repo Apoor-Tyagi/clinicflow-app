@@ -321,7 +321,7 @@
       );
     } else {
       const select = el("select", { id: "book-patient", required: true },
-        patients.map((p) => el("option", { value: p.id, text: p.full_name + (p.email ? "" : " (no email)") })));
+        patients.map((p) => el("option", { value: p.id, text: p.full_name + " (" + (p.email || "no email") + ")" })));
       const when = el("input", { id: "book-when", type: "datetime-local", required: true });
       const error = el("p", { class: "error", role: "alert", hidden: true });
       const submit = el("button", { class: "btn primary", type: "submit", text: "Book appointment" });
