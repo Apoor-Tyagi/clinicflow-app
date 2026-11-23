@@ -38,6 +38,7 @@ jobs:
       PGPASSWORD: ci-throwaway
       TENANT_TEST_ADMIN_URL: postgresql://ci_admin:ci-throwaway@localhost:5432/clinicflow
       TENANT_TEST_APP_URL: postgresql://clinicflow_app:ci-app-throwaway@localhost:5432/clinicflow
+      TENANT_TEST_DISPATCHER_URL: postgresql://clinicflow_dispatcher:ci-dispatcher-throwaway@localhost:5432/clinicflow
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -56,6 +57,7 @@ jobs:
             psql -h localhost -U ci_admin -d clinicflow -v ON_ERROR_STOP=1 -f "$migration"
           done
           psql -h localhost -U ci_admin -d clinicflow -v ON_ERROR_STOP=1 -c "ALTER ROLE clinicflow_app PASSWORD 'ci-app-throwaway'"
+          psql -h localhost -U ci_admin -d clinicflow -v ON_ERROR_STOP=1 -c "ALTER ROLE clinicflow_dispatcher PASSWORD 'ci-dispatcher-throwaway'"
 
       - name: Run tests
         run: python -m pytest -q -rs
