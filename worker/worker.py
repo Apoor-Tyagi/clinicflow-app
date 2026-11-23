@@ -93,7 +93,12 @@ class Worker:
                 },
             )
         except Exception as exc:
-            log.error("send failed for appointment %s: %s", data["appointment_id"], type(exc).__name__)
+            log.error(
+                "send failed for appointment %s: %s %s",
+                data["appointment_id"],
+                type(exc).__name__,
+                error_code(exc) or "no-code",
+            )
             return False
 
         try:
