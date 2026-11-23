@@ -9,25 +9,39 @@ architecture, measured results and decision records live in the infra repository
 
 | Path | What it is |
 |---|---|
-| `app/` | FastAPI service: `/health`, `/ready`, `/metrics`, `/api/v1/ping` |
+| `app/` | FastAPI service: clinic API under `/api/v1`, front desk UI at `/`, `/health`, `/ready`, `/metrics` |
+| `dispatcher/` | Turns queued reminders into EventBridge schedules (runs on the node) |
 | `db/migrations/` | PostgreSQL schema with row-level security per clinic |
 | `worker/` | Reminder worker: reads SQS, sends through SES, records to DynamoDB |
 | `tests/` | API tests and tenant isolation tests |
 | `Dockerfile` | Multi-stage build, non-root user, pip removed from the runtime image |
 | `docs/adr/` | Decisions about the container build and image publishing |
 
-The booking endpoints are out of scope. The API serves health checks and metrics,
-and reminders are exercised through the queue directly.
+The API also has patients, appointments and a front desk web UI (served at `/`).
 
 ## Run it locally
 
-Start the database and the API:
+You need Docker (with Compose). No AWS account is needed for this part.
 
 ```bash
-cp .env.example .env     # then edit the values
+cp .env.example .env     # the example values are fine for a local run
 docker compose up --build
-curl localhost:8000/health
 ```
+
+The first start creates the database, applies every migration and sets the
+application role's password. Wait for the `api` container to log that it is
+running, then open <http://localhost:8000>. Create a clinic and sign in:
+
+```bash
+source .env
+curl -s -X POST localhost:8000/api/v1/admin/clinics -H "X-Admin-Token: $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" -d '{"name": "Demo Clinic"}'
+```
+
+Paste the `api_key` from the answer into the sign-in screen. The key is shown once.
+Locally nothing sends email: reminders are queued in the `reminders` table, and
+the dispatcher and worker need AWS. To reset the database, run
+`docker compose down -v`.
 
 Run the tests:
 
