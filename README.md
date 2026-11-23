@@ -37,11 +37,26 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-The six tenant isolation tests skip unless two connection strings are set. They
+The tenant isolation and API tests skip unless two connection strings are set. They
 need a real PostgreSQL with the migration applied and a separate non-superuser
 application role, because row-level security does not apply to superusers.
 `docker-compose.test.yml` exposes the database on `127.0.0.1:5433` for this. CI
 runs them against a PostgreSQL service container on every pull request.
+
+## API
+
+The API needs `DATABASE_URL` (the `clinicflow_app` role) and `ADMIN_TOKEN`. Create a
+clinic once with the admin token, then use the key it returns:
+
+```bash
+curl -X POST localhost:8000/api/v1/admin/clinics -H "X-Admin-Token: $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" -d '{"name": "Demo Clinic"}'
+```
+
+Every other call sends `X-API-Key`. Interactive docs are at `/docs`. Booking an
+appointment for a patient with an email address queues a reminder 24 hours ahead
+in the `reminders` table. Turning queued reminders into scheduled emails is a
+separate step that is not built yet.
 
 ## Pipeline
 
