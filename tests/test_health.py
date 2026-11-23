@@ -13,7 +13,8 @@ def test_ping():
     assert client.get("/api/v1/ping").json() == {"message": "pong"}
 
 
-def test_ready_without_database_is_503():
+def test_ready_without_database_is_503(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     assert client.get("/ready").status_code == 503
 
 def test_ping_fails_when_fault_rate_is_one(monkeypatch):

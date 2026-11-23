@@ -214,3 +214,25 @@ def test_appointments_can_be_filtered_by_status(client, make_clinic):
     client.patch(f"/api/v1/appointments/{drop['id']}", headers=headers, json={"status": "cancelled"})
     booked = client.get("/api/v1/appointments", headers=headers, params={"status": "booked"}).json()
     assert [a["id"] for a in booked] == [keep["id"]]
+
+
+def test_front_desk_page_is_served_with_a_strict_content_policy():
+    response = TestClient(app).get("/")
+    assert response.status_code == 200
+    assert "ClinicFlow" in response.text
+    policy = response.headers["content-security-policy"]
+    assert "default-src 'self'" in policy and "frame-ancestors 'none'" in policy
+
+
+def test_front_desk_assets_are_served():
+    client = TestClient(app)
+    assert client.get("/static/app.css").status_code == 200
+    assert client.get("/static/app.js").status_code == 200
+
+
+def test_front_desk_script_never_writes_html():
+    # Patient names are typed by users, so the page must only ever use textContent.
+    from pathlib import Path
+
+    script = (Path(__file__).parent.parent / "app" / "static" / "app.js").read_text()
+    assert "innerHTML" not in script and "insertAdjacentHTML" not in script
