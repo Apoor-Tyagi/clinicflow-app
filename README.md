@@ -37,7 +37,7 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-The tenant isolation and API tests skip unless two connection strings are set. They
+The tenant isolation, API and dispatcher tests skip unless two connection strings are set. They
 need a real PostgreSQL with the migration applied and a separate non-superuser
 application role, because row-level security does not apply to superusers.
 `docker-compose.test.yml` exposes the database on `127.0.0.1:5433` for this. CI
@@ -56,7 +56,11 @@ curl -X POST localhost:8000/api/v1/admin/clinics -H "X-Admin-Token: $ADMIN_TOKEN
 Every other call sends `X-API-Key`. Interactive docs are at `/docs`. Booking an
 appointment for a patient with an email address queues a reminder 24 hours ahead
 in the `reminders` table. Turning queued reminders into scheduled emails is a
-separate step that is not built yet.
+separate service, the dispatcher in `dispatcher/`. It runs on the node, where it
+can create EventBridge schedules, and it connects as its own database role,
+`clinicflow_dispatcher`, which can read reminders across clinics but cannot read
+patient names or change anything else. A schedule carries the recipient address
+for the worker, so schedules are as sensitive as the queue.
 
 ## Pipeline
 
