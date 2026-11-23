@@ -6,7 +6,10 @@ import psycopg
 from fastapi import FastAPI, Request, Response, status
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 
+from app.api import router as api_router
+
 app = FastAPI(title="ClinicFlow API")
+app.include_router(api_router)
 
 REQUESTS = Counter("http_requests_total", "HTTP requests", ["method", "path", "status"])
 LATENCY = Histogram("http_request_duration_seconds", "Request latency", ["path"])
@@ -19,7 +22,10 @@ FAULT_RATE = float(os.getenv("FAULT_RATE", "0"))
 async def record_metrics(request: Request, call_next):
     start = time.perf_counter()
     response = await call_next(request)
-    path = request.url.path
+    # Label by route template, not the raw URL, so ids in the path cannot create
+    # unbounded metric series. Requests that match no route share one label.
+    route = request.scope.get("route")
+    path = route.path if route is not None else "unmatched"
     LATENCY.labels(path).observe(time.perf_counter() - start)
     REQUESTS.labels(request.method, path, response.status_code).inc()
     return response

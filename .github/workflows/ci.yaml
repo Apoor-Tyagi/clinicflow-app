@@ -52,7 +52,9 @@ jobs:
       - name: Apply database migrations
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
-          psql -h localhost -U ci_admin -d clinicflow -v ON_ERROR_STOP=1 -f db/migrations/001_tenant_model.sql
+          for migration in db/migrations/*.sql; do
+            psql -h localhost -U ci_admin -d clinicflow -v ON_ERROR_STOP=1 -f "$migration"
+          done
           psql -h localhost -U ci_admin -d clinicflow -v ON_ERROR_STOP=1 -c "ALTER ROLE clinicflow_app PASSWORD 'ci-app-throwaway'"
 
       - name: Run tests
